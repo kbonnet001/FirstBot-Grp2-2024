@@ -16,6 +16,6 @@ if len(found_ids) < 2:
 
 ids = found_ids[:2]
 
-
+dxl_io.get_present_position((2, ))
 
 dxl_io.close()
