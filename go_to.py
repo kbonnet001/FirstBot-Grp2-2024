@@ -6,7 +6,7 @@ from plot import plot_position_orientation_comparaison
 
 # C'est le chantier ahhhhhhhhhhhhhh
 
-def go_to(x_target, y_target, theta_target, x_start = 0.0, y_start=0.0, theta_start=0.0, 
+def go_to(m, x_target, y_target, theta_target, x_start = 0.0, y_start=0.0, theta_start=0.0, 
           K_v = 2.0 , K_theta = 2.0):
   """
   /!\ les K ne sont pas définis, à choisir !!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -73,7 +73,7 @@ def go_to(x_target, y_target, theta_target, x_start = 0.0, y_start=0.0, theta_st
     
     # If within tolerance, stop the robot, it's finish :)
     if distance_to_target < tolerance_pos and abs(theta_n - theta_target) < tolerance_theta:
-      stop()
+      m.stop()
       break
 
     # Calculate x_dot and theta_dot
@@ -93,10 +93,10 @@ def go_to(x_target, y_target, theta_target, x_start = 0.0, y_start=0.0, theta_st
     v_gauche, v_droit = inverse_kinematic(x_dot, theta_dot)
     print("vg = ", v_gauche) # si les deux positifs alors ça tourne, et un + un - alors ça avance
     print("vd =", v_droit)
-    spin_wheels(motors, v_gauche, v_droit)
+    m.spin_wheels(motors, v_gauche, v_droit)
     
     # Retrieve real speeds from motors (simulated by get_current_speed())
-    v_gauche_motor, v_droit_motor = get_current_speed_wheels(motors) 
+    v_gauche_motor, v_droit_motor = m.get_current_speed_wheels() 
     
     x_dot, theta_dot = direct_kinematics(v_gauche, v_droit) # theorie
     x_dot_real, theta_dot_real = direct_kinematics(v_gauche_motor, v_droit_motor) # real

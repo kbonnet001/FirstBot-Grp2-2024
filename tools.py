@@ -1,5 +1,6 @@
 import math
 import motors
+import time
 
 r = 0.0256
 L = 0.1284
@@ -28,7 +29,7 @@ def direct_kinematics(v_gauche, v_droit) :
 
   return x_dot, theta_dot
     
-def odom(x_dot, theta_dot, dt) : 
+def odom(x_dot, theta_dot, t_n_1, t_n) : 
   """
   Compute position x y and orientation of the robot
   Takes as parameters linear and angular speed of the robot, and returns
@@ -44,13 +45,15 @@ def odom(x_dot, theta_dot, dt) :
   dy : position axis y (m)
   d_teta : orientation (rad)
   """
-  dx = x_dot * dt * math.cos(theta_dot) # distance dx * angle
-  dy = x_dot * dt * math.sin(theta_dot)
+  
+  dt = t_n - t_n_1
+  dx = x_dot * dt * math.cos(theta_dot * dt) # distance dx * angle
+  dy = x_dot * dt * math.sin(theta_dot * dt)
   d_theta = theta_dot * dt
   
   return dx, dy, d_theta
 
-def tick_odom(x_n_1, y_n_1, theta_n_1, x_dot, theta_dot, dt) : 
+def tick_odom(x_n_1, y_n_1, theta_n_1, t_n_1, x_dot, theta_dot, t_n) : 
   """ 
   Compute new position and orientation in the world frame (update)
   Takes as parameters the position and orientation of the robot in the world frame,
@@ -71,7 +74,7 @@ def tick_odom(x_n_1, y_n_1, theta_n_1, x_dot, theta_dot, dt) :
   - theta_n : orientation at t in world frame (rad)
   """
   # Compute variations of positions and orientation 
-  dx_global, dy_global, theta_global = odom(x_dot, theta_dot, dt)
+  dx_global, dy_global, theta_global = odom(x_dot, theta_dot, t_n_1, t_n)
   
   # Update position in world frame
   # Last position in world frame (n-1) + variation 
@@ -106,26 +109,28 @@ def inverse_kinematic(x_dot, theta_dot) :
 def calculate_theta_line_cam(sampling_h1, sampling_1_center, sampling_h2, sampling_2_center):
   
   delta_sampling_h = sampling_h2 - sampling_h1
-  delta_sampling_center = sampling_2_center - sampling_1_center
+  delta_sampling_center = abs(sampling_2_center - sampling_1_center)
   
-  theta_line = math.tan(delta_sampling_center/delta_sampling_h)
+  theta_line = math.atan(delta_sampling_center/delta_sampling_h)
   
   return theta_line
 
 def turn_with_line(m, theta_line):
   
-  tolerance_theta = 0.02 
+  tolerance_theta = 0.05
   
-  angle_line = abs(180 / math.pi * theta_line)
+  #angle_line = abs(180 / math.pi * theta_line)
   
-  t = 2/(3*angle_line)
+  #t = 2/(3*angle_line)
+  theta_speed = math.pi
   
-  if theta_line > tolerance_theta:
-    motors.turn_right(m, angle_line/t, t)
-    
-  if theta_line < tolerance_theta:
-    motors.turn_left(m, angle_line/t, t)
-    
+  if theta_line < -tolerance_theta:
+    #m.turn_right(angle_line/t, t)
+    t = theta_line / theta_speed
+    m.turn_right(theta_speed, t)
+  elif theta_line > tolerance_theta:
+    #m.turn_left(angle_line/t, t)
+    t = theta_line / theta_speed
+    m.turn_left(theta_speed, t)    
   else :
-    motors.go_forward(m)
-    
+    m.go_forward()

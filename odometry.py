@@ -2,11 +2,11 @@ from motors import *
 import time
 from tools import *
 
-def odometry(x_real = 0.0, y_real = 0.0, theta_real = 0.0) :
+def odometry(m, x_real = 0.0, y_real = 0.0, theta_real = 0.0) :
   
   while True : 
     # Retrieve real speeds from motors (simulated by get_current_speed())
-    v_gauche_motor, v_droit_motor = get_current_speed_wheels() 
+    v_gauche_motor, v_droit_motor = m.get_current_speed_wheels() 
     
     x_dot_real, theta_dot_real = direct_kinematics(v_gauche_motor, v_droit_motor) # real
     

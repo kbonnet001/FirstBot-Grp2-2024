@@ -1,139 +1,185 @@
 import pypot.dynamixel
 import time
 import math
+import tools
 
+r = 0.0256
+L = 0.1284
 ROTATION_SPEED = 360
 
 class Motors():
-    PORTS = pypot.dynamixel.get_available_ports()
-    port = PORTS[0]
-    DXL_IO =  pypot.dynamixel.DxlIO(port)
-    found_ids  =  DXL_IO.scan(range(5))
-    ids = found_ids[:2]
-    DXL_IO.enable_torque(ids)
+    def __init__(self):
+        self.PORTS = pypot.dynamixel.get_available_ports()
+        self.port = self.PORTS[0]
+        self.DXL_IO =  pypot.dynamixel.DxlIO(self.port)
+        self.found_ids  =  self.DXL_IO.scan(range(5))
+        self.ids = self.found_ids[:2]
+        self.DXL_IO.enable_torque(self.ids)
 
-    DXL_IO.set_wheel_mode([1])
-    DXL_IO.set_wheel_mode([2])
+        self.DXL_IO.set_wheel_mode([1])
+        self.DXL_IO.set_wheel_mode([2])
 
+    def go_forward(self):
+        """ Go forward"""
+        self.DXL_IO.set_moving_speed({1: -ROTATION_SPEED})
+        self.DXL_IO.set_moving_speed({2: ROTATION_SPEED})
 
-# def initMotors():
-#   ports = pypot.dynamixel.get_available_ports()
-#   if not ports:
-#       raise IOError('no port found!')
+    def stop(self):
+        self.DXL_IO.set_moving_speed({1: 0})
+        self.DXL_IO.set_moving_speed({2: 0})
+        
+    # Turn
+    def turn_left(self, l, t):
+        """ 
+        Slow down left wheel for l seconds
+        
+        Args :
+        l = degrees/s
+        t = time in seconds
+        
+        """
+        self.DXL_IO.set_moving_speed({2: l})
+        t0 = time.time()
+        while True:
+            t1 = time.time()
+            if (t1 - t0) > t:
+                break
+        self.go_forward()
 
-#   port = ports[0]
-#   print(port)
-#   dxl_io = pypot.dynamixel.DxlIO(port)
+    def turn_right(self, r, t):
+        """
+        Slow down right wheel for l seconds
+        Args :
+        r = degrees/s
+        t = time in seconds
+        """
+        self.DXL_IO.set_moving_speed({1: -r})
+        t0 = time.time()
+        while True:
+            t1 = time.time()
+            if (t1 - t0) > t:
+                break
+        self.go_forward()
 
-#   found_ids  =  dxl_io.scan(range(5))
-#   print(found_ids )
+    def get_wheel_info(self):
+        
+        print("---")
+        # current angular position motors
+        positions = self.DXL_IO.get_present_position([1, 2])
+        print(f"Position des moteurs: {positions}")
 
-#   if len(found_ids) < 2:
-#           raise IOError('You should connect at least two motors on the bus for this test.')
+        # current speed of motors
+        speeds = self.DXL_IO.get_present_speed([1, 2])
+        print(f"Vitesse des moteurs: {speeds}")
 
-#   ids = found_ids[:2]
-#   dxl_io.enable_torque(ids)
+        # current temp of motors
+        temperatures = self.DXL_IO.get_present_temperature([1, 2])
+        print(f"Température des moteurs: {temperatures}")
 
-#   dxl_io.set_wheel_mode([1])
-#   dxl_io.set_wheel_mode([2])
+        # current vol of motors
+        voltages = self.DXL_IO.get_present_voltage([1, 2])
+        print(f"Voltage des moteurs: {voltages}")
+    ###
 
-def go_forward(m):
-    """ Go forward"""
-    m.DXL_IO.set_moving_speed({1: -ROTATION_SPEED})
-    m.DXL_IO.set_moving_speed({2: ROTATION_SPEED})
+    def get_current_speed_wheels(self) : 
+        """ 
+        Get the current speed of wheels
 
-def stop(m):
-    m.DXL_IO.set_moving_speed({1: 0})
-    m.DXL_IO.set_moving_speed({2: 0})
-    
-# Turn
-def turn_left(m, l, t):
-    """ 
-    Slow down left wheel for l seconds
-    
-    Args :
-    l = degrees/s
-    t = time in seconds
-    
-    """
-    m.DXL_IO.set_moving_speed({2: l})
-    t0 = time.time()
-    while True:
-        t1 = time.time()
-        if (t1 - t0) > t:
-            break
-    go_forward(m)
-
-def turn_right(m, r, t):
-    """
-    Slow down right wheel for l seconds
-    Args :
-    r = degrees/s
-    t = time in seconds
-    """
-    m.DXL_IO.set_moving_speed({1: -r})
-    t0 = time.time()
-    while True:
-        t1 = time.time()
-        if (t1 - t0) > t:
-            break
-    go_forward(m)
-
-def get_wheel_info(m):
-    
-    print("---")
-    # current angular position motors
-    positions = m.DXL_IO.get_present_position([1, 2])
-    print(f"Position des moteurs: {positions}")
-
-    # current speed of motors
-    speeds = m.DXL_IO.get_present_speed([1, 2])
-    print(f"Vitesse des moteurs: {speeds}")
-
-    # current temp of motors
-    temperatures = m.DXL_IO.get_present_temperature([1, 2])
-    print(f"Température des moteurs: {temperatures}")
-
-    # current vol of motors
-    voltages = m.DXL_IO.get_present_voltage([1, 2])
-    print(f"Voltage des moteurs: {voltages}")
-###
-
-def get_current_speed_wheels(m) : 
-    """ 
-    Get the current speed of wheels
-
-    Returns : 
-    - v_gauche and v_droit : wheel speeds (rad/s)
-    """
-    return m.DXL_IO.get_present_speed([1, 2])
+        Returns : 
+        - v_gauche and v_droit : wheel speeds (rad/s)
+        """
+        return self.DXL_IO.get_present_speed([1, 2])
 
 
-###############################################
-def spin_wheels(m, v_gauche, v_droite):
-    """ Spin wheels with given values 
-    To stop the robot, choose 0 for each wheels
+    ###############################################
+    def spin_wheels(self, v_gauche, v_droite):
+        """ Spin wheels with given values 
+        To stop the robot, choose 0 for each wheels
 
-    Args:
-    - v_gauche and v_droit : wheel speeds rad/s
-    
-    """
-    vd = math.degrees(v_droite)
-    vg = math.degrees(v_gauche) # --> deg/s
-    
-    m.DXL_IO.set_moving_speed({1: -vd})
-    m.DXL_IO.set_moving_speed({2: vg})
+        Args:
+        - v_gauche and v_droit : wheel speeds rad/s
+        
+        """
+        vd = math.degrees(v_droite)
+        vg = math.degrees(v_gauche) # --> deg/s
+        
+        self.DXL_IO.set_moving_speed({1: -vd})
+        self.DXL_IO.set_moving_speed({2: vg})
 
+    def rotate(self, n, omega_roue = 3.0):
+        """ 
+        Rotation of the robot 
+        
+        Arg : 
+        - n (rad) : angle
+        omega_roue = 3  # Vitesse angulaire fixe (rad/s)
+        """
 
-# def function(theta, K_theta = 2.0) : 
-    
-#     x_dot = 0  # No forward movement
-#     theta_dot = K_theta * theta 
-#     v_gauche, v_droit = inverse_kinematic(x_dot, theta_dot)
-#     spin_wheels(v_gauche, v_droit)
+        # Calculer la distance à parcourir par la roue active
+        dist = ((n*180/math.pi) / 360) * 2 * math.pi * (L / 2)
+        
+        # Calculer le nombre de tours que la roue doit effectuer
+        num_tours = dist / (2 * math.pi * r)
+        
+        # Calculer le temps nécessaire pour tourner
+        # Distance parcourue par la roue divisée par sa vitesse angulaire
+        temps_rotation = abs(num_tours / (omega_roue / (2 * math.pi)))
+        
+        if n > 0:
+            self.spin_wheels(2 * omega_roue, 0)
+        else:
+            self.spin_wheels(0, 2 * omega_roue)
+        
+        time.sleep(temps_rotation)
+        
+        self.spin_wheels(0, 0)
 
-# spin_wheels(3.14, 0)
-# time.sleep(3)
-motors = Motors()
+    def rotate_two_wheels(self, n, omega_roue = 3.0): #####################################
+        """ 
+        Rotation of the robot 
+        
+        Arg : 
+        - n (rad) : angle
+        omega_roue = 3  # Vitesse angulaire fixe (rad/s)
+        """
+        # Calculer la distance à parcourir par la roue active
+        dist = ((n*180/math.pi) / 360) * 2 * math.pi * (L / 2)
+        
+        # Calculer le nombre de tours que la roue doit effectuer
+        num_tours = dist / (2 * math.pi * r)
 
-stop(motors)
+        # Calculer le temps nécessaire pour tourner
+        # Distance parcourue par la roue divisée par sa vitesse angulaire
+        temps_rotation =  abs(num_tours / (omega_roue / (2 * math.pi)))
+        
+        if n > 0:
+            self.spin_wheels(omega_roue, -omega_roue)
+        else:
+            self.spin_wheels(-omega_roue, omega_roue)
+        
+        time.sleep(temps_rotation)
+        
+        self.spin_wheels(0, 0)
+
+    #####################
+    def move_forward_distance(self, distance, angular_speed=3.0):
+        """
+        Go foward to a choosen distance
+        Arg : 
+        - distance (m) : a choosen distance
+        - angular_speed (rad/s) : default 3.0, speed
+        """
+        # Compute wheel circumference
+        wheel_circumference = math.pi * r
+
+        # Number of rotations needed
+        num_rotations = distance / (wheel_circumference * 2)
+
+        # Compute time
+        time_to_travel = num_rotations / (angular_speed / (2 * math.pi))
+
+        # Give speed to motors
+        self.spin_wheels(angular_speed, angular_speed)
+        
+        # Wait the good time to do the distance
+        time.sleep(time_to_travel)
