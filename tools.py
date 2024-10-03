@@ -1,7 +1,8 @@
 import math
+import motors
 
 r = 0.0256
-L = 0.1
+L = 0.1284
 
 def direct_kinematics(v_gauche, v_droit) : 
   """
@@ -86,7 +87,7 @@ def tick_odom(x_n_1, y_n_1, theta_n_1, x_dot, theta_dot, dt) :
 
 ######################################
 
-def inverse_kinematic(x_dot, teta_dot) :
+def inverse_kinematic(x_dot, theta_dot) :
   """
   Compute wheels left and right speeds
 
@@ -95,9 +96,36 @@ def inverse_kinematic(x_dot, teta_dot) :
   teta_dot : angular speed (rad/s)
 
   Returns
-  v_gauche, v_droite : angular target speed of wheels
+  v_gauche, v_droite : angular target speed of wheels (rad/s)
   """
-  v_gauche = teta_dot * (L/4) + x_dot
-  v_droite = x_dot - (L/4) * teta_dot
+  v_droite = theta_dot * (L/2) + x_dot #merci de laisser 2 voir test.py :)
+  v_gauche = x_dot - (L/2) * theta_dot
 
-  return v_gauche, v_droite
+  return v_gauche/r, v_droite/r
+
+def calculate_theta_line_cam(sampling_h1, sampling_1_center, sampling_h2, sampling_2_center):
+  
+  delta_sampling_h = sampling_h2 - sampling_h1
+  delta_sampling_center = sampling_2_center - sampling_1_center
+  
+  theta_line = math.tan(delta_sampling_center/delta_sampling_h)
+  
+  return theta_line
+
+def turn_with_line(m, theta_line):
+  
+  tolerance_theta = 0.02 
+  
+  angle_line = abs(180 / math.pi * theta_line)
+  
+  t = 2/(3*angle_line)
+  
+  if theta_line > tolerance_theta:
+    motors.turn_right(m, angle_line/t, t)
+    
+  if theta_line < tolerance_theta:
+    motors.turn_left(m, angle_line/t, t)
+    
+  else :
+    motors.go_forward(m)
+    

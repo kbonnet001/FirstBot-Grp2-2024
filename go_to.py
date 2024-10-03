@@ -1,71 +1,133 @@
 import math
+from tools import *
+from motors import *
+from Timer import *
+from plot import plot_position_orientation_comparaison
 
 # C'est le chantier ahhhhhhhhhhhhhh
 
-def go_to_xya(x_n, y_n, theta_n, x_n_1 = 0.0, y_n_1 = 0.0, theta_n_1 = 0.0) : 
+def go_to(x_target, y_target, theta_target, x_start = 0.0, y_start=0.0, theta_start=0.0, 
+          K_v = 2.0 , K_theta = 2.0):
   """
-  Args 
-  x_n_1 : current position x (default 0)
-  y_n_1 : current position y (default 0)
-  theta_n_1 : current orientation (default 0)
-  x_n : target position x
-  y_n : target position y 
-  theta_n : target orientation
-   
+  /!\ les K ne sont pas définis, à choisir !!!!!!!!!!!!!!!!!!!!!!!!!!
   
+  Guide the robot to a given position (x_target, y_target) and orientation (theta_target).
+  Monitors the real wheel speeds and computes the real position and orientation.
+  1) Adjust the orientation 
+  2) Go to the position x y 
+  3) Adjust the orientation
+  
+  Boucle while to check with current odometry informations from motors
+  
+  Args:
+  - x_target, y_target: Coordinates of the target position (m)
+  - theta_target: Target orientation (rad)
+  - dt: Time interval (s)
+  - x_start, y_start, theta_start: Initial position and orientation (rad)
+    (default 0.0)
+  
+  Returns:
+  - Updated real position and orientation of the robot
   """
-  while (x_n_1 != x_n or y_n_1!= y_n or theta_n_1!=theta_n) : 
-    
-    # Compute distance to target
-    distance = math.sqrt((x_n - x_n_1)**2 + (y_n - y_n_1)**2)
+  motors = Motors()
 
-    # Compute angle to target
-    theta_target_angle = math.atan2(y_n - y_n_1, x_n - x_n_1)
-    
-    epsilon_theta = theta_target_angle - theta_n_1 # if we have already a theta
-    epsilon_theta = (epsilon_theta + math.pi) % (2 * math.pi) - math.pi # normalisation
-    
-    # 
-    
-    return v_gauche, v_droit
+  # Initial position and orientation
+  x_n, y_n, theta_n = x_start, y_start, theta_start
 
+  # Real position and orientation (tracked based on real motor speeds)
+  x_real, y_real, theta_real = x_start, y_start, theta_start
+  
+  # Time initialisation
+  t1 = time.time()
+  
+  # Tolerance for reaching the target
+  tolerance_pos = 0.01  # 1 cm tolerance for position
+  tolerance_theta = 0.1  # 0.1 rad tolerance for orientation
+  
+  # (optionnal) save theorical and real values of position and orientation
+  list_x = []
+  list_y = []
+  list_theta = []
+  list_vg = []
+  list_vd = []
+  list_dt = []
 
-import math
+  while True:
+    print("---")
+    # Compute the distance and angle to the target
+    
+    x_n = x_real
+    y_n = y_real
+    theta_n = theta_real
+    print("début", "x_n", x_n, "y_n = ", y_n, "theta_n = ", theta_n)
+    
+    distance_to_target = math.sqrt((x_target - x_n)**2 + (y_target - y_n)**2)
+    print("distance to target = ", distance_to_target)
+    
+    angle_to_target = math.atan2(y_target - y_n, x_target - x_n)
+    print("angle to target = ", angle_to_target)
+    
+    # Compute errors
+    error_angle = angle_to_target - theta_n
+    print("error angle = ", error_angle)
+    
+    # If within tolerance, stop the robot, it's finish :)
+    if distance_to_target < tolerance_pos and abs(theta_n - theta_target) < tolerance_theta:
+      stop()
+      break
 
-def go_to_position(x_current, y_current, theta_current, x_target, y_target, theta_target, L, r, dt):
-    # 1. Calculer la distance vers la cible
-    distance_to_target = math.sqrt((x_target - x_current)**2 + (y_target - y_current)**2)
+    # Calculate x_dot and theta_dot
+    if abs(error_angle) > tolerance_theta: # if the orientation isn't correct
+      # Rotation needed
+      print("rotation")
+      x_dot = 0  # No forward movement
+      theta_dot = K_theta * error_angle  # Angular velocity proportional to the error
+        
+    else: # orientation is correct, let's go !
+      print("avancer")
+      # Moving straight to the target
+      x_dot = K_v * distance_to_target  # Linear velocity proposrtional to the distance
+      theta_dot = 0  # No angular velocity needed, already oriented correctly
+      
+    # Use inverse kinematics to get wheel speeds
+    v_gauche, v_droit = inverse_kinematic(x_dot, theta_dot)
+    print("vg = ", v_gauche) # si les deux positifs alors ça tourne, et un + un - alors ça avance
+    print("vd =", v_droit)
+    spin_wheels(motors, v_gauche, v_droit)
     
-    # 2. Calculer l'angle vers la cible
-    angle_to_target = math.atan2(y_target - y_current, x_target - x_current)
+    # Retrieve real speeds from motors (simulated by get_current_speed())
+    v_gauche_motor, v_droit_motor = get_current_speed_wheels(motors) 
     
-    # 3. Calculer la différence d'angle nécessaire pour tourner vers la cible
-    angle_error = angle_to_target - theta_current
+    x_dot, theta_dot = direct_kinematics(v_gauche, v_droit) # theorie
+    x_dot_real, theta_dot_real = direct_kinematics(v_gauche_motor, v_droit_motor) # real
     
-    # 4. Calculer la différence d'orientation pour atteindre theta_target
-    theta_error = theta_target - theta_current
+    t0 = t1
+    t1 = time.time()
+    dt = t1 - t0
+    x_n, y_n, theta_n = tick_odom(x_n, y_n, theta_n, x_dot, theta_dot, dt) # theorie
+    print("x_n", x_n, "y_n = ", y_n, "theta_n = ", theta_n)
+    x_real, y_real, theta_real = tick_odom(x_real, y_real, theta_real, x_dot_real, theta_dot_real, dt) # real 
+    print("x_real", x_real, "y_real = ", y_real, "theta_real = ", theta_real)
     
-    # 5. Définir les vitesses linéaire et angulaire (simple contrôle proportionnel)
-    # Ajuster ces gains (K_lin et K_ang) selon les besoins du robot
-    K_lin = 1.0  # Gain pour la vitesse linéaire
-    K_ang = 1.0  # Gain pour la vitesse angulaire
+    # print(f"Real: x={x_real:.3f}, y={y_real:.3f}, theta={theta_real:.3f}")
+    # print(f"Target: x={x_n:.3f}, y={y_n:.3f}, theta={theta_n:.3f}")
+    #################################################################################
+    # attention à la fréquence du while, peut être un peu vener...
+    # faudrait pas que ça devienne trop lourd pour la ptite carte '^'
     
-    x_dot = K_lin * distance_to_target  # Vitesse linéaire proportionnelle à la distance
-    theta_dot = K_ang * (angle_error + theta_error)  # Vitesse angulaire pour corriger l'orientation
+    # list_x.append([x_n, x_real])
+    # list_y.append([y_n, y_real])
+    # list_theta.append([theta_n, theta_real])
+    # list_vg.append([v_gauche, v_gauche_motor])
+    # list_vd.append([v_droit, v_droit_motor])
+    # list_dt.append(dt)
 
-    # 6. Calculer les vitesses des roues à partir des vitesses linéaire et angulaire
-    v_gauche, v_droit = compute_wheel_speeds(x_dot, theta_dot, L, r)
-    
-    # 7. Utiliser la fonction pour calculer la variation de position et orientation
-    dx, dy, d_theta = calculate_position_variation(x_dot, theta_dot, theta_current, dt)
-    
-    # 8. Mettre à jour la position et orientation actuelles
-    x_new = x_current + dx
-    y_new = y_current + dy
-    theta_new = theta_current + d_theta
-    
-    return x_new, y_new, theta_new, v_gauche, v_droit
+  return list_x, list_y, list_theta, list_vg, list_vd, list_dt
 
-
-
-
+with measure_time() as timer:
+  list_x, list_y, list_theta, list_vg, list_vd, list_dt = go_to(1.0, 1.0, 1.0, x_start = 0.0, 
+                                                                y_start=0.0, theta_start=0.0, 
+                                                                K_v = 1.0 , K_theta = 2.0)
+  plot_position_orientation_comparaison(list_x, list_y, list_theta, list_vg, list_vd, list_dt)
+  
+print(f"Time execution: {timer.execution_time:.6f} seconds")
