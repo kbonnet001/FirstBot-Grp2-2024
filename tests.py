@@ -27,17 +27,18 @@ def testKinematics():
 
 def testTurnLeft():
 	m = motors.Motors()
-	motors.go_forward(m)
-	time.sleep(1)
-	motors.turn_left(m, math.pi/2, 1)
-	time.sleep(2)
-	motors.stop(m)
+	m.rotate_two_wheels(math.pi/2)
 	return True
 
+def testTurnRight():
+	m = motors.Motors()
+	m.rotate_two_wheels(-math.pi/2)
+	return True
 
 funcDict = {
     "tools.direct_kinematics()" : testKinematics,
-    "motors.turn_left()": testTurnLeft
+    "motors.rotate_two_wheels(math.pi/4)": testTurnLeft,
+    "motors.rotate_two_wheels(-math.pi/4)": testTurnRight
 }
 
 #Eventuellement ajouter un message en cas d'erreur ?

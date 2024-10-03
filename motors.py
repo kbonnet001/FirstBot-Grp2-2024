@@ -86,10 +86,11 @@ class Motors():
         Get the current speed of wheels
 
         Returns : 
-        - v_gauche and v_droit : wheel speeds (rad/s)
+        - v_droit and v_gauche : wheel speeds (rad/s)
+    
         """
-        return self.DXL_IO.get_present_speed([1, 2])
-
+        vd, vg = self.DXL_IO.get_present_speed([1, 2]) #/!\ deg/s
+        return (vd/180) * math.pi, (vg/180) * math.pi
 
     ###############################################
     def spin_wheels(self, v_gauche, v_droite):
@@ -126,15 +127,15 @@ class Motors():
         temps_rotation = abs(num_tours / (omega_roue / (2 * math.pi)))
         
         if n > 0:
-            self.spin_wheels(2 * omega_roue, 0)
-        else:
             self.spin_wheels(0, 2 * omega_roue)
+        else:
+            self.spin_wheels(2 * omega_roue, 0)
         
-        time.sleep(temps_rotation)
-        
-        self.spin_wheels(0, 0)
+        #time.sleep(temps_rotation)
 
-    def rotate_two_wheels(self, n, omega_roue = 3.0): #####################################
+        #self.stop()
+
+    def rotate_two_wheels(self, n, omega_roue = 3.0): 
         """ 
         Rotation of the robot 
         
@@ -153,13 +154,13 @@ class Motors():
         temps_rotation =  abs(num_tours / (omega_roue / (2 * math.pi)))
         
         if n > 0:
-            self.spin_wheels(omega_roue, -omega_roue)
-        else:
             self.spin_wheels(-omega_roue, omega_roue)
+        else:
+            self.spin_wheels(omega_roue, -omega_roue)
         
-        time.sleep(temps_rotation)
+        #time.sleep(temps_rotation)
         
-        self.spin_wheels(0, 0)
+        #self.stop()
 
     #####################
     def move_forward_distance(self, distance, angular_speed=3.0):
@@ -182,4 +183,35 @@ class Motors():
         self.spin_wheels(angular_speed, angular_speed)
         
         # Wait the good time to do the distance
-        time.sleep(time_to_travel)
+        #time.sleep(time_to_travel)
+
+        #self.stop()
+
+    #####################
+    def move_backward_distance(self, distance, angular_speed=3.0):
+        """
+        Go foward to a choosen distance
+        Arg : 
+        - distance (m) : a choosen distance
+        - angular_speed (rad/s) : default 3.0, speed
+        """
+        # Compute wheel circumference
+        wheel_circumference = math.pi * r
+
+        # Number of rotations needed
+        num_rotations = distance / (wheel_circumference * 2)
+
+        # Compute time
+        time_to_travel = num_rotations / (angular_speed / (2 * math.pi))
+
+        # Give speed to motors
+        self.spin_wheels(-angular_speed, -angular_speed)
+        
+        # Wait the good time to do the distance
+        #time.sleep(time_to_travel)
+
+        #self.stop()
+        
+    def passive_wheels(self) :
+        """ Go to passive mode, torque = 0.0""" 
+        self.DXL_IO.disable_torque(self.ids)

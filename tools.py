@@ -45,7 +45,6 @@ def odom(x_dot, theta_dot, t_n_1, t_n) :
   dy : position axis y (m)
   d_teta : orientation (rad)
   """
-  
   dt = t_n - t_n_1
   dx = x_dot * dt * math.cos(theta_dot * dt) # distance dx * angle
   dy = x_dot * dt * math.sin(theta_dot * dt)
@@ -69,24 +68,25 @@ def tick_odom(x_n_1, y_n_1, theta_n_1, t_n_1, x_dot, theta_dot, t_n) :
   dt : time (s)
   
   Returns 
-  - x_n : position on x axis at t in world frame (m)
-  - y_n : position on y axis at t in world frame (m)
-  - theta_n : orientation at t in world frame (rad)
+  - x_world : position on x axis at t in world frame (m)
+  - y_world : position on y axis at t in world frame (m)
+  - theta_world : orientation at t in world frame (rad)
   """
   # Compute variations of positions and orientation 
-  dx_global, dy_global, theta_global = odom(x_dot, theta_dot, t_n_1, t_n)
-  
-  # Update position in world frame
-  # Last position in world frame (n-1) + variation 
-  x_n = x_n_1 + dx_global
-  y_n = y_n_1 + dy_global
+  dx_relatif, dy_relatif, theta_relatif = odom(x_dot, theta_dot, t_n_1, t_n)
   
   # Update orientation
   # Last orientation in world frame (n-1) + variation 
-  theta_n = theta_n_1 + theta_global
+  theta_world = theta_n_1 + theta_relatif
   
-  return x_n, y_n, theta_n
-
+  dx_world, dy_world = fonction_de_transfert(dx_relatif, dy_relatif, theta_world)
+  
+  # Update position in world frame
+  # Last position in world frame (n-1) + variation 
+  x_world = x_n_1 + dx_world
+  y_world = y_n_1 + dy_world
+  
+  return x_world, y_world, theta_world
 
 ######################################
 
@@ -106,8 +106,15 @@ def inverse_kinematic(x_dot, theta_dot) :
 
   return v_gauche/r, v_droite/r
 
-def calculate_theta_line_cam(sampling_h1, sampling_1_center, sampling_h2, sampling_2_center):
+"""def calculate_theta_line_cam(sampling_h1, sampling_1_center, sampling_h2, sampling_2_center, h, center_x):
   
+  tolerance_theta = 0.05
+
+  delta_center_1 = sampling_1_center - center_x
+
+  if(abs(delta_center_1) > tolerance_theta):
+    
+
   delta_sampling_h = sampling_h2 - sampling_h1
   delta_sampling_center = abs(sampling_2_center - sampling_1_center)
   
@@ -122,15 +129,26 @@ def turn_with_line(m, theta_line):
   #angle_line = abs(180 / math.pi * theta_line)
   
   #t = 2/(3*angle_line)
-  theta_speed = math.pi
+  #theta_speed = math.pi*2
   
   if theta_line < -tolerance_theta:
     #m.turn_right(angle_line/t, t)
-    t = theta_line / theta_speed
-    m.turn_right(theta_speed, t)
+    #t = theta_line / theta_speed
+    #m.turn_right(theta_speed, t)
+    m.rotate_two_wheels(theta_line)
   elif theta_line > tolerance_theta:
     #m.turn_left(angle_line/t, t)
-    t = theta_line / theta_speed
-    m.turn_left(theta_speed, t)    
+    #t = theta_line / theta_speed
+    #m.turn_left(theta_speed, t)    
+    m.rotate_two_wheels(theta_line)
   else :
-    m.go_forward()
+        #m.go_forward()
+    m.move_forward_distance(0.04)"""
+    
+def fonction_de_transfert(x_relatif, y_relatif, theta):
+  #theta correspond au nouveau theta
+  """Robot frame to world frame """
+  
+  x = x_relatif * math.cos(theta) - y_relatif * math.sin(theta)
+  y = x_relatif * math.sin(theta) - y_relatif * math.cos(theta)
+  return x, y

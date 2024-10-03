@@ -1,3 +1,4 @@
+import math
 import cv2
 import numpy as np
 from enum import Enum
@@ -9,6 +10,9 @@ class Color(Enum):
   RED = (0, 0, 255)
   BLACK = (0, 0, 0)
   YELLOW = (0, 255, 255)
+
+# Mask 
+#-----
 
 def getRedMask(hsv):
   lower_red1 = np.array([0,50,50])
@@ -49,11 +53,14 @@ def getBlackMask(hsv):
 
   return mask
 
-# Upper sampling line, 0.6 for position, higher values
-sampling_line_1 = 0.6
+camera_w_size = 0.04
+camera_h_size = 0.03
 
-# Lower sampling line, the value needs to be greater than sampling_line_1 and less than 1."
-sampling_line_2 = 0.9
+# Upper sampling line, 0.6 for position, higher values
+sampling_line_u = 0.6
+
+# Lower sampling line, the value needs to be greater than sampling_line_u and less than 1."
+sampling_line_l = 0.9
 
 #camera_index is the video device number of the camera 
 camera_index = 0
@@ -69,6 +76,9 @@ try:
     w = image.shape[1]
 
     center_x = int(w / 2)
+    real_center_y = 0.052 + camera_h_size/2
+
+    px_by_cm = h / camera_h_size
 
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -92,43 +102,44 @@ try:
     res = cv2.bitwise_and(image, image, mask=mask)
     #cv2.imwrite('./' + c.name + 'image.jpg', res)
 
-    # Detect the target line based on the positions of the upper and lower sampling lines, and calculate steering and velocity control signals according to the detection results
-    sampling_h1 = int(h * sampling_line_1)
-    sampling_h2 = int(h * sampling_line_2)
+    # Detect the target line based on the positions of the upper and lower 
+    # sampling lines, and calculate steering and velocity control signals according to the detection results
+    sampling_hu = int(h * sampling_line_u)
+    sampling_hl = int(h * sampling_line_l)
 
-    get_sampling_1 = mask[sampling_h1]
-    get_sampling_2 = mask[sampling_h2]
+    get_sampling_u = mask[sampling_hu]
+    get_sampling_l = mask[sampling_hl]
 
     # Calculate the width of the target line at the upper and lower sampling lines
-    sampling_width_1 = np.sum(get_sampling_1 == 255)
-    sampling_width_2 = np.sum(get_sampling_2 == 255)
+    sampling_width_u = np.sum(get_sampling_u == 255)
+    sampling_width_l = np.sum(get_sampling_l == 255)
 
-    if sampling_width_1:
+    if sampling_width_u:
         sam_1 = True
     else:
         sam_1 = False
-    if sampling_width_2:
+    if sampling_width_l:
         sam_2 = True
     else:
         sam_2 = False
 
     # Get the edge index of the target line at the upper and lower sampling lines
-    line_index_1 = np.where(get_sampling_1 == 255)
-    line_index_2 = np.where(get_sampling_2 == 255)
+    line_index_u = np.where(get_sampling_u == 255)
+    line_index_l = np.where(get_sampling_l == 255)
 
-    sampling_1_center = center_x
-    sampling_2_center = center_x
+    sampling_center_u = center_x
+    sampling_center_l = center_x
 
     # If the target line is detected at the upper sampling line, calculate the center position of the target line
     if sam_1:
-        sampling_1_left  = line_index_1[0][0]  # Index of the leftmost index of the upper sampling line target line
-        sampling_1_right = line_index_1[0][sampling_width_1 - 1]  # Index to the far right of the upper sampling line target line
-        sampling_1_center= int((sampling_1_left + sampling_1_right) / 2)  # Index of the center of the upper sampling line target line
+        sampling_left_u  = line_index_u[0][0]  # Index of the leftmost index of the upper sampling line target line
+        sampling_right_u = line_index_u[0][sampling_width_u - 1]  # Index to the far right of the upper sampling line target line
+        sampling_center_u= int((sampling_left_u + sampling_right_u) / 2)  # Index of the center of the upper sampling line target line
     # If a target line is detected at the lower sampling line, calculate the target line center position
     if sam_2:
-        sampling_2_left  = line_index_2[0][0]
-        sampling_2_right = line_index_2[0][sampling_width_2 - 1]
-        sampling_2_center= int((sampling_2_left + sampling_2_right) / 2)
+        sampling_left_l  = line_index_l[0][0]
+        sampling_right_l = line_index_l[0][sampling_width_l - 1]
+        sampling_center_l= int((sampling_left_l + sampling_right_l) / 2)
 
     t1 = time.time()
 
@@ -136,42 +147,69 @@ try:
     print(c.name)
     print("Upper line: " + str(sam_1))
     if sam_1:
-        print("Upper line left: " + str(sampling_1_left))
-        print("Upper line right: " + str(sampling_1_right))
-        print("Upper line width: " + str(sampling_width_1))
-        print("Upper line middle: " + str(sampling_1_center))
+        print("Upper line left: " + str(sampling_left_u))
+        print("Upper line right: " + str(sampling_right_u))
+        print("Upper line width: " + str(sampling_width_u))
+        print("Upper line middle: " + str(sampling_center_u))
     print("Lower line: " + str(sam_2))
     if sam_2:
-        print("Lower line left: " + str(sampling_2_left))
-        print("Lower line right: " + str(sampling_2_right))
-        print("Lower line width: " + str(sampling_width_2))
-        print("Lower line middle: " + str(sampling_2_center))
+        print("Lower line left: " + str(sampling_left_l))
+        print("Lower line right: " + str(sampling_right_l))
+        print("Lower line width: " + str(sampling_width_l))
+        print("Lower line middle: " + str(sampling_center_l))
     
     print("Time for one frame: " + str(round(time.time() - t0, 3)) + " s")
 
+
     if sam_1:
       # Draw c.value marker lines at the ends of the target line at the upper sample line
-      cv2.line(image, (sampling_1_left, sampling_h1+20), (sampling_1_left, sampling_h1-20), c.value, 2)
-      cv2.line(image, (sampling_1_right, sampling_h1+20), (sampling_1_right, sampling_h1-20), c.value, 2)
+      cv2.line(image, (sampling_left_u, sampling_hu+20), (sampling_left_u, sampling_hu-20), c.value, 2)
+      cv2.line(image, (sampling_right_u, sampling_hu+20), (sampling_right_u, sampling_hu-20), c.value, 2)
     if sam_2:
       # Draw c.value marker lines at the ends of the target line at the lower sampling line
-      cv2.line(image, (sampling_2_left, sampling_h2+20), (sampling_2_left, sampling_h2-20), c.value, 2)
-      cv2.line(image, (sampling_2_right, sampling_h2+20), (sampling_2_right, sampling_h2-20), c.value, 2)
+      cv2.line(image, (sampling_left_l, sampling_hl+20), (sampling_left_l, sampling_hl-20), c.value, 2)
+      cv2.line(image, (sampling_right_l, sampling_hl+20), (sampling_right_l, sampling_hl-20), c.value, 2)
     if sam_1 and sam_2:
       # If the target line is detected at both the upper and lower sample lines, draw a c.value line from the center of the upper sample line to the center of the lower sample line.
-      cv2.line(image, (sampling_1_center, sampling_h1), (sampling_2_center, sampling_h2), c.value, 2)
+      cv2.line(image, (sampling_center_u, sampling_hu), (sampling_center_l, sampling_hl), c.value, 2)
 
-    cv2.line(image, (0, sampling_h1), (w, sampling_h1), (0, 255, 0), 2)
-    cv2.line(image, (0, sampling_h2), (w, sampling_h2), (0, 255, 0), 2)
+    cv2.line(image, (0, sampling_hu), (w, sampling_hu), (0, 255, 0), 2)
+    cv2.line(image, (0, sampling_hl), (w, sampling_hl), (0, 255, 0), 2)
 
     #cv2.imwrite('./debugimage.jpg', image)
-    
-    theta_line = tools.calculate_theta_line_cam(sampling_h1, sampling_1_center, sampling_h2, sampling_2_center)
-    print(theta_line)
-    
+
     t2 = time.time()
-    
-    tools.turn_with_line(m, theta_line)
+
+    tolerance_theta1 = math.pi/4
+    tolerance_theta2 = 0.05
+
+    tolerance_center = w * 0.3
+
+    delta_center_1 = center_x - sampling_center_u
+    delta_sampling_1 = (px_by_cm * real_center_y) - sampling_hu
+    theta1 = math.atan(delta_center_1/delta_sampling_1)
+
+    delta_center_2 = sampling_center_l - sampling_center_u
+    delta_sampling_2 = sampling_hl - sampling_hu
+    theta2 = math.atan(delta_center_2/delta_sampling_2)
+
+    print(theta1)
+    print(theta2)
+    print(delta_center_1)
+    print(delta_center_2)
+
+    if(sam_1 and sam_2):
+      if(abs(delta_center_1) > tolerance_center):
+        #cv2.imwrite('./debugimage.jpg', image)
+        m.rotate(theta1)
+        #m.move_forward_distance(real_center_y)
+        #m.rotate_two_wheels(-theta1)
+      #elif(abs(delta_center_2) > tolerance_center):
+      # m.rotate_two_wheels(theta2)
+      else:
+        m.move_forward_distance(camera_h_size)
+    else:
+      m.move_backward_distance(camera_h_size)
     
     t3 = time.time()
     
