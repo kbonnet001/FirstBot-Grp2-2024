@@ -47,16 +47,6 @@ def getYellowMask(hsv):
 
   return mask
 
-"""
-def getBlackMask(hsv):
-  lower_black = np.array([0,0,0])
-  upper_black = np.array([180,255,10])
-
-  mask = cv2.inRange(hsv, lower_black, upper_black)
-
-  return mask
-"""
-
 def getBlackMask(gray):
   _, thresh = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY_INV)
   return thresh
@@ -71,6 +61,8 @@ sampling_line_u = 0.6
 sampling_line_l = 0.9
 
 sampling_line_yellow = 0.5
+
+speed = 6.0
 
 #camera_index is the video device number of the camera 
 camera_index = 0
@@ -117,7 +109,6 @@ try:
     px_by_cm = h / camera_h_size
 
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     followmask = None
     #cv2.imwrite('./image.jpg', image)
@@ -132,8 +123,6 @@ try:
 
     sampling_width_y = np.sum(get_sampling_y == 255)
 
-    print(sampling_width_y)
-
     tolerance_yellow = 100
 
     if sampling_width_y > tolerance_yellow and not yellow_already_detected:
@@ -141,7 +130,7 @@ try:
       match c:
         case Color.RED:
           c = Color.BLACK
-        
+          exit()
         case Color.BLACK:
           c = Color.RED
       map.color = c.value
@@ -153,6 +142,7 @@ try:
         followmask = getRedMask(hsv)
       
       case Color.BLACK:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         followmask = getBlackMask(gray)
     
     followmask = cv2.erode(followmask, None, iterations=1)  # Eroding operation to remove noise
@@ -250,33 +240,31 @@ try:
     delta_sampling_1 = (px_by_cm * real_center_y) - sampling_hu
     theta1 = math.atan(delta_center_1/delta_sampling_1)
 
+    """
     delta_center_2 = sampling_center_l - sampling_center_u
     delta_sampling_2 = sampling_hl - sampling_hu
     theta2 = math.atan(delta_center_2/delta_sampling_2)
+    """
 
     delta_center_3 = center_x - sampling_center_l
     delta_sampling_3 = (px_by_cm * real_center_y) - sampling_hl
     theta3 = math.atan(delta_center_3/delta_sampling_3)
 
-    print(theta1)
-    print(theta2)
-    print(delta_center_1)
-    print(delta_center_2)
+    print("Angle of correction : " + str(theta1))
+    #print(theta2)
+    print("Difference between centers : " + str(delta_center_1))
+    #print(delta_center_2)
 
     if(sam_1 and sam_2):
       if(abs(delta_center_1) > tolerance_center):
         #cv2.imwrite('./debugimage.jpg', image)
-        m.rotate(theta1, omega_roue=6)
-        #m.move_forward_distance(real_center_y)
-        #m.rotate_two_wheels(-theta1)
-      #elif(abs(delta_center_2) > tolerance_center):
-      # m.rotate_two_wheels(theta2)
+        m.rotate(theta1, omega_roue=speed)
       else:
-        m.move_forward_distance(camera_h_size, angular_speed=6)
+        m.move_forward_distance(angular_speed=speed)
     elif(sam_2):
-      m.rotate(theta3, omega_roue=6)
+      m.rotate(theta3, omega_roue=speed)
     else:
-      m.move_forward_distance(camera_h_size, angular_speed=6)
+      m.move_forward_distance(angular_speed=speed)
     
     t3 = time.time()
     

@@ -111,20 +111,10 @@ class Motors():
         """ 
         Rotation of the robot 
         
-        Arg : 
+        Arg :
         - n (rad) : angle
-        omega_roue = 3  # Vitesse angulaire fixe (rad/s)
+        - omega_roue = 3  # Vitesse angulaire fixe (rad/s)
         """
-
-        # Calculer la distance à parcourir par la roue active
-        dist = ((n*180/math.pi) / 360) * 2 * math.pi * (L / 2)
-        
-        # Calculer le nombre de tours que la roue doit effectuer
-        num_tours = dist / (2 * math.pi * r)
-        
-        # Calculer le temps nécessaire pour tourner
-        # Distance parcourue par la roue divisée par sa vitesse angulaire
-        temps_rotation = abs(num_tours / (omega_roue / (2 * math.pi)))
         
         if n > 0:
             self.spin_wheels(0, 2 * omega_roue)
@@ -137,17 +127,8 @@ class Motors():
         
         Arg : 
         - n (rad) : angle
-        omega_roue = 3  # Vitesse angulaire fixe (rad/s)
+        - omega_roue = 3  # Vitesse angulaire fixe (rad/s)
         """
-        # Calculer la distance à parcourir par la roue active
-        dist = ((n*180/math.pi) / 360) * 2 * math.pi * (L / 2)
-        
-        # Calculer le nombre de tours que la roue doit effectuer
-        num_tours = dist / (2 * math.pi * r)
-
-        # Calculer le temps nécessaire pour tourner
-        # Distance parcourue par la roue divisée par sa vitesse angulaire
-        temps_rotation =  abs(num_tours / (omega_roue / (2 * math.pi)))
         
         if n > 0:
             self.spin_wheels(-omega_roue, omega_roue)
@@ -155,49 +136,27 @@ class Motors():
             self.spin_wheels(omega_roue, -omega_roue)
 
     #####################
-    def move_forward_distance(self, distance, angular_speed=3.0):
+    def move_forward_distance(self, angular_speed=3.0):
         """
         Go foward to a choosen distance
         Arg : 
         - distance (m) : a choosen distance
         - angular_speed (rad/s) : default 3.0, speed
         """
-        # Compute wheel circumference
-        wheel_circumference = math.pi * r
-
-        # Number of rotations needed
-        num_rotations = distance / (wheel_circumference * 2)
-
-        # Compute time
-        time_to_travel = num_rotations / (angular_speed / (2 * math.pi))
 
         # Give speed to motors
         self.spin_wheels(angular_speed, angular_speed)
 
     #####################
-    def move_backward_distance(self, distance, angular_speed=3.0):
+    def move_backward_distance(self, angular_speed=3.0):
         """
         Go foward to a choosen distance
-        Arg : 
-        - distance (m) : a choosen distance
+        Arg :
         - angular_speed (rad/s) : default 3.0, speed
         """
-        # Compute wheel circumference
-        wheel_circumference = math.pi * r
-
-        # Number of rotations needed
-        num_rotations = distance / (wheel_circumference * 2)
-
-        # Compute time
-        time_to_travel = num_rotations / (angular_speed / (2 * math.pi))
-
+        
         # Give speed to motors
         self.spin_wheels(-angular_speed, -angular_speed)
-        
-        # Wait the good time to do the distance
-        #time.sleep(time_to_travel)
-
-        #self.stop()
         
     def passive_wheels(self) :
         """ Go to passive mode, torque = 0.0""" 
