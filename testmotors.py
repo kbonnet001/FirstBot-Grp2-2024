@@ -8,14 +8,16 @@ m = motors.Motors()
 #2) GO TO (without odom)
 # x + forward | y - back
 # y + left | y - right
+# 90 rad = 1,5708 rad tourne vers la gauche (+ = gauche et - = droite)
+# 180 rad = 3,14159 deg
 
-x_to_go = 1.0
-y_to_go = - 0.5
-angle_to_go = 0.0 
-go_to(m, x_to_go, y_to_go, angle_to_go, x_start = 0.0, y_start=0.0, theta_start=0.0, speed_rot = 3.0, speed_go = 10.0) #ok
+# x_to_go = 1.0
+# y_to_go = - 1.0
+# angle_to_go = math.pi
+# go_to(m, x_to_go, y_to_go, angle_to_go, x_start = 0.0, y_start=0.0, theta_start=0.0, speed_rot = 3.0, speed_go = 5.0) #ok
 
 #3) ODOMETRY
-# odometry(m)
+odometry(m)
 
 #################################################################
 

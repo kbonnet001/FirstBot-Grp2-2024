@@ -25,6 +25,10 @@ def getBlackMask(hsv):
 
   return mask
 
+def getBlackThresh(gray):
+  _, thresh = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY_INV)
+  return thresh
+
 def getRedMask(hsv):
   lower_red1 = np.array([0,0,0])
   upper_red1 = np.array([20,255,255])
@@ -57,24 +61,24 @@ cv2.imwrite('./pic.jpg', img)
 hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-ret, thresh = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY_INV)
 
-mask = getBlackMask(hsv)
-#mask = getRedMask(hsv)
+#mask = getBlackMask(hsv)
+
+#mask = getBlackThresh(gray)
+mask = getRedMask(hsv)
 #mask = getYellowMask(hsv)
 
 mask = cv2.erode(mask, None, iterations=1)  # Eroding operation to remove noise
 mask = cv2.dilate(mask, None, iterations=1)  # Expansion operation enhances the target line
 
-cv2.imwrite('./mask.jpg', mask)
 cv2.imwrite('./gray.jpg', gray)
-cv2.imwrite('./thresh.jpg', thresh)
+cv2.imwrite('./mask.jpg', mask)
 
 sampling_hu = int(h * sampling_line_u)
 sampling_hl = int(h * sampling_line_l)
 
-get_sampling_u = thresh[sampling_hu]
-get_sampling_l = thresh[sampling_hl]
+get_sampling_u = mask[sampling_hu]
+get_sampling_l = mask[sampling_hl]
 
 # Calculate the width of the target line at the upper and lower sampling lines
 sampling_width_u = np.sum(get_sampling_u == 255)
@@ -93,20 +97,16 @@ else:
 line_index_u = np.where(get_sampling_u == 255)
 line_index_l = np.where(get_sampling_l == 255)
 
-print(line_index_u[0])
-
 if sam_1:
 	sampling_left_u  = line_index_u[0][0]  # Index of the leftmost index of the upper sampling line target line
 	sampling_right_u = line_index_u[0][sampling_width_u - 1]  # Index to the far right of the upper sampling line target line
 	sampling_center_u= int((sampling_left_u + sampling_right_u) / 2)  # Index of the center of the upper sampling line target line
-	print(len(line_index_u[0])/2)
 	sampling_center_u= line_index_u[0][int(len(line_index_u[0])/2)]
 # If a target line is detected at the lower sampling line, calculate the target line center position
 if sam_2:
 	sampling_left_l  = line_index_l[0][0]
 	sampling_right_l = line_index_l[0][sampling_width_l - 1]
 	sampling_center_l= int((sampling_left_l + sampling_right_l) / 2)
-	print(len(line_index_l[0])/2)
 	sampling_center_l= line_index_l[0][int(len(line_index_l[0])/2)]
 
 if sam_1:

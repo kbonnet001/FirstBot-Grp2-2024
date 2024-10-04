@@ -18,9 +18,9 @@ class Color(Enum):
 
 def getRedMask(hsv):
   lower_red1 = np.array([0,50,50])
-  upper_red1 = np.array([10,255,255])
+  upper_red1 = np.array([15,255,255])
 
-  lower_red2 = np.array([170,50,50])
+  lower_red2 = np.array([165,50,50])
   upper_red2 = np.array([180,255,255])
 
 
@@ -273,6 +273,7 @@ try:
     x_n, y_n, theta_n, t_n = m.compute_position_orientation(v_droit_motor, v_gauche_motor, x_n_1, y_n_1, theta_n_1, t_n_1)
     
     print("Temps pour le traitement d'image: " + str(round(t1 - t0, 3)) + " s")
+    print("Images par secondes : " +  str(1/round(t1 - t0, 3)) + " fps")
     print("Temps pour le dessin de la ligne: " + str(round(t2 - t1, 3)) + " s")
     print("Temps pour donner la consigne au robot: " + str(round(t3 - t2, 3)) + " s")
     

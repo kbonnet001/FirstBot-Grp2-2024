@@ -4,7 +4,7 @@ from tools import *
 from plot import *
 from SkyviewMap import SkyviewMap
 
-def odometry(m, x_n = 0.0, y_n = 0.0, theta_n = 0.0, width = 600, height = 600, scale = 300, name_map="odometry_map") :
+def odometry(m, x_n = 0.0, y_n = 0.0, theta_n = 0.0, width = 600, height = 600, scale = 100, name_map="odometry_map") :
   """ Robot will be moved (using "passive wheels" mode) on the round.
   After some time, you will indicate where the robot is located relative 
   to its initial position (x, y, theta), using only the motor encoders.
