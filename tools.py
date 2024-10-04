@@ -1,5 +1,4 @@
 import math
-import motors
 import time
 
 r = 0.0256

@@ -5,6 +5,20 @@ from odometry import *
 
 m = motors.Motors()
 
+#2) GO TO (without odom)
+# x + forward | y - back
+# y + left | y - right
+
+x_to_go = 1.0
+y_to_go = - 0.5
+angle_to_go = 0.0 
+go_to(m, x_to_go, y_to_go, angle_to_go, x_start = 0.0, y_start=0.0, theta_start=0.0, speed_rot = 3.0, speed_go = 10.0) #ok
+
+#3) ODOMETRY
+# odometry(m)
+
+#################################################################
+
 # m.move_forward_distance(0.5, 3) #1 m
 # m.stop()
 
@@ -15,7 +29,7 @@ m = motors.Motors()
 # m.stop()
 
 # test go_to
-# go_to(m, 0.5, 0.14, 0.0, x_start = 0.0, y_start=0.0, theta_start=0.0) #ok
+#go_to(m, 0.5, 0.5, 0.0, x_start = 0.0, y_start=0.0, theta_start=0.0) #ok
 
 # go_to(m, -0.97, -0.55, 0.0, x_start = 0.0, y_start=0.0, theta_start=0.0) #ok
 
@@ -29,6 +43,7 @@ m = motors.Motors()
 #   if (time.time() - t0 > 10) :
 #     break
 
-odometry(m)
-
 # m.DXL_IO.close()
+
+###########################################################################
+

@@ -12,8 +12,6 @@ import matplotlib.image as img
 import cv2
 import numpy as np
 from enum import Enum
-import tools
-# import motors
 import time
 
 class Color(Enum):

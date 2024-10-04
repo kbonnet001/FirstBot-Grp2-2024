@@ -5,6 +5,8 @@ from enum import Enum
 import tools
 import motors
 import time
+from SkyviewMap import SkyviewMap
+from plot import plot_position_orientation_comparaison
 
 class Color(Enum):
   RED = (0, 0, 255)
@@ -39,19 +41,25 @@ def getBlueMask(hsv):
 
 def getYellowMask(hsv):
   lower_yellow = np.array([20,50,50])
-  upper_yellow = np.array([35,255,255])
+  upper_yellow = np.array([80,255,255])
 
   mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
 
   return mask
 
+"""
 def getBlackMask(hsv):
   lower_black = np.array([0,0,0])
-  upper_black = np.array([180,255,90])
+  upper_black = np.array([180,255,10])
 
   mask = cv2.inRange(hsv, lower_black, upper_black)
 
   return mask
+"""
+
+def getBlackMask(gray):
+  _, thresh = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY_INV)
+  return thresh
 
 camera_w_size = 0.04
 camera_h_size = 0.03
@@ -62,13 +70,41 @@ sampling_line_u = 0.6
 # Lower sampling line, the value needs to be greater than sampling_line_u and less than 1."
 sampling_line_l = 0.9
 
+sampling_line_yellow = 0.5
+
 #camera_index is the video device number of the camera 
 camera_index = 0
 cam = cv2.VideoCapture(camera_index)
 
+c = Color.BLACK
+
+yellow_already_detected = True
+
 m = motors.Motors()
+x_n = 0.0
+y_n = 0.0 
+theta_n = 0.0
+t_n = time.time()
+
+# Preparation of lists for plot
+list_x = [x_n]
+list_y = [y_n]
+list_theta = [theta_n]
+list_vg = [0.0]
+list_vd = [0.0]
+list_t = [0.0]
+last_time = time.time()  # horodotage initialisation
+
+# Prepare map
+map = SkyviewMap(width = 600, height=600, scale=100, color=c.value, name="camera_map")
 try:
   while(True):
+    print("---")
+    x_n_1 = x_n
+    y_n_1 = y_n
+    theta_n_1 = theta_n
+    t_n_1 = t_n
+    
     t0 = time.time()
     ret, image = cam.read()
 
@@ -81,25 +117,49 @@ try:
     px_by_cm = h / camera_h_size
 
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    mask = None
+    followmask = None
     #cv2.imwrite('./image.jpg', image)
-    c = Color.RED
+
+    yellowmask = getYellowMask(hsv)
+    yellowmask = cv2.erode(yellowmask, None, iterations=1)  # Eroding operation to remove noise
+    yellowmask = cv2.dilate(yellowmask, None, iterations=1)  # Expansion operation enhances the target line
+
+    sampling_hy = int(h * sampling_line_yellow)
+
+    get_sampling_y = yellowmask[sampling_hy]
+
+    sampling_width_y = np.sum(get_sampling_y == 255)
+
+    print(sampling_width_y)
+
+    tolerance_yellow = 100
+
+    if sampling_width_y > tolerance_yellow and not yellow_already_detected:
+      yellow_already_detected = True
+      match c:
+        case Color.RED:
+          c = Color.BLACK
+        
+        case Color.BLACK:
+          c = Color.RED
+      map.color = c.value
+    elif(not sampling_width_y):
+       yellow_already_detected = False
+       
     match c:
       case Color.RED:
-        mask = getRedMask(hsv)
-          
+        followmask = getRedMask(hsv)
+      
       case Color.BLACK:
-        mask = getBlackMask(hsv)
-
-      case Color.YELLOW:
-        mask = getYellowMask(hsv)
-
-    mask = cv2.erode(mask, None, iterations=1)  # Eroding operation to remove noise
-    mask = cv2.dilate(mask, None, iterations=1)  # Expansion operation enhances the target line
+        followmask = getBlackMask(gray)
+    
+    followmask = cv2.erode(followmask, None, iterations=1)  # Eroding operation to remove noise
+    followmask = cv2.dilate(followmask, None, iterations=1)  # Expansion operation enhances the target line
 
     #cv2.imwrite('./' + c.name + 'mask.jpg', mask)
-    res = cv2.bitwise_and(image, image, mask=mask)
+    #res = cv2.bitwise_and(image, image, mask=followmask)
     #cv2.imwrite('./' + c.name + 'image.jpg', res)
 
     # Detect the target line based on the positions of the upper and lower 
@@ -107,8 +167,8 @@ try:
     sampling_hu = int(h * sampling_line_u)
     sampling_hl = int(h * sampling_line_l)
 
-    get_sampling_u = mask[sampling_hu]
-    get_sampling_l = mask[sampling_hl]
+    get_sampling_u = followmask[sampling_hu]
+    get_sampling_l = followmask[sampling_hl]
 
     # Calculate the width of the target line at the upper and lower sampling lines
     sampling_width_u = np.sum(get_sampling_u == 255)
@@ -132,14 +192,14 @@ try:
 
     # If the target line is detected at the upper sampling line, calculate the center position of the target line
     if sam_1:
-        sampling_left_u  = line_index_u[0][0]  # Index of the leftmost index of the upper sampling line target line
-        sampling_right_u = line_index_u[0][sampling_width_u - 1]  # Index to the far right of the upper sampling line target line
-        sampling_center_u= int((sampling_left_u + sampling_right_u) / 2)  # Index of the center of the upper sampling line target line
+      sampling_left_u  = line_index_u[0][0]  # Index of the leftmost index of the upper sampling line target line
+      sampling_right_u = line_index_u[0][sampling_width_u - 1]  # Index to the far right of the upper sampling line target line
+      sampling_center_u= line_index_u[0][int(len(line_index_u[0])/2)]  # Index of the center of the upper sampling line target line
     # If a target line is detected at the lower sampling line, calculate the target line center position
     if sam_2:
-        sampling_left_l  = line_index_l[0][0]
-        sampling_right_l = line_index_l[0][sampling_width_l - 1]
-        sampling_center_l= int((sampling_left_l + sampling_right_l) / 2)
+      sampling_left_l  = line_index_l[0][0]
+      sampling_right_l = line_index_l[0][sampling_width_l - 1]
+      sampling_center_l= line_index_l[0][int(len(line_index_l[0])/2)]
 
     t1 = time.time()
 
@@ -160,7 +220,7 @@ try:
     
     print("Time for one frame: " + str(round(time.time() - t0, 3)) + " s")
 
-
+    """
     if sam_1:
       # Draw c.value marker lines at the ends of the target line at the upper sample line
       cv2.line(image, (sampling_left_u, sampling_hu+20), (sampling_left_u, sampling_hu-20), c.value, 2)
@@ -175,6 +235,7 @@ try:
 
     cv2.line(image, (0, sampling_hu), (w, sampling_hu), (0, 255, 0), 2)
     cv2.line(image, (0, sampling_hl), (w, sampling_hl), (0, 255, 0), 2)
+    """
 
     #cv2.imwrite('./debugimage.jpg', image)
 
@@ -183,7 +244,7 @@ try:
     tolerance_theta1 = math.pi/4
     tolerance_theta2 = 0.05
 
-    tolerance_center = w * 0.3
+    tolerance_center = w * 0.25
 
     delta_center_1 = center_x - sampling_center_u
     delta_sampling_1 = (px_by_cm * real_center_y) - sampling_hu
@@ -193,6 +254,10 @@ try:
     delta_sampling_2 = sampling_hl - sampling_hu
     theta2 = math.atan(delta_center_2/delta_sampling_2)
 
+    delta_center_3 = center_x - sampling_center_l
+    delta_sampling_3 = (px_by_cm * real_center_y) - sampling_hl
+    theta3 = math.atan(delta_center_3/delta_sampling_3)
+
     print(theta1)
     print(theta2)
     print(delta_center_1)
@@ -201,21 +266,42 @@ try:
     if(sam_1 and sam_2):
       if(abs(delta_center_1) > tolerance_center):
         #cv2.imwrite('./debugimage.jpg', image)
-        m.rotate(theta1)
+        m.rotate(theta1, omega_roue=6)
         #m.move_forward_distance(real_center_y)
         #m.rotate_two_wheels(-theta1)
       #elif(abs(delta_center_2) > tolerance_center):
       # m.rotate_two_wheels(theta2)
       else:
-        m.move_forward_distance(camera_h_size)
+        m.move_forward_distance(camera_h_size, angular_speed=6)
+    elif(sam_2):
+      m.rotate(theta3, omega_roue=6)
     else:
-      m.move_backward_distance(camera_h_size)
+      m.move_forward_distance(camera_h_size, angular_speed=6)
     
     t3 = time.time()
+    
+    # odometry
+    v_droit_motor, v_gauche_motor = m.get_current_speed_wheels()
+    x_n, y_n, theta_n, t_n = m.compute_position_orientation(v_droit_motor, v_gauche_motor, x_n_1, y_n_1, theta_n_1, t_n_1)
     
     print("Temps pour le traitement d'image: " + str(round(t1 - t0, 3)) + " s")
     print("Temps pour le dessin de la ligne: " + str(round(t2 - t1, 3)) + " s")
     print("Temps pour donner la consigne au robot: " + str(round(t3 - t2, 3)) + " s")
+    
+    if t_n - last_time >= 0.5 : #every second
+        
+      # Add line on map
+      map.trace_position_on_map((list_x[-1], list_y[-1]), (x_n, y_n))
+      
+      # append
+      list_x.append(x_n)
+      list_y.append(y_n)
+      list_theta.append(theta_n%(2*math.pi))
+      list_vg.append(v_gauche_motor)
+      list_vd.append(-v_droit_motor)
+      list_t.append(list_t[-1] + t_n - t_n_1)
+        
+      last_time = t_n
     
     
 except BaseException as e:
@@ -223,3 +309,7 @@ except BaseException as e:
   cam.release()
   cv2.destroyAllWindows()
   print(e)
+
+  print(f"Fin de l'odometrie : \n x = {x_n}, y = {y_n}, theta = {theta_n}")
+  plot_position_orientation_comparaison(list_x, list_y, list_theta, list_vg, list_vd, list_t, "camera_plot")
+  map.display_and_save_map()

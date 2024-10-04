@@ -130,10 +130,6 @@ class Motors():
             self.spin_wheels(0, 2 * omega_roue)
         else:
             self.spin_wheels(2 * omega_roue, 0)
-        
-        #time.sleep(temps_rotation)
-
-        #self.stop()
 
     def rotate_two_wheels(self, n, omega_roue = 3.0): 
         """ 
@@ -157,10 +153,6 @@ class Motors():
             self.spin_wheels(-omega_roue, omega_roue)
         else:
             self.spin_wheels(omega_roue, -omega_roue)
-        
-        #time.sleep(temps_rotation)
-        
-        #self.stop()
 
     #####################
     def move_forward_distance(self, distance, angular_speed=3.0):
@@ -181,11 +173,6 @@ class Motors():
 
         # Give speed to motors
         self.spin_wheels(angular_speed, angular_speed)
-        
-        # Wait the good time to do the distance
-        #time.sleep(time_to_travel)
-
-        #self.stop()
 
     #####################
     def move_backward_distance(self, distance, angular_speed=3.0):
@@ -215,3 +202,69 @@ class Motors():
     def passive_wheels(self) :
         """ Go to passive mode, torque = 0.0""" 
         self.DXL_IO.disable_torque(self.ids)
+        
+    #### go to
+    def rotate_two_wheels_go_to(self, n, omega_roue = 3.0): 
+        """ 
+        Rotation of the robot 
+        
+        Arg : 
+        - n (rad) : angle
+        - omega_roue = 3  # Vitesse angulaire fixe (rad/s)
+        
+        Return : 
+        - temps_rotation (s) : time to do the correct distance
+        
+        """
+        # Calculer la distance à parcourir par la roue active
+        dist = ((n*180/math.pi) / 360) * 2 * math.pi * (L / 2)
+        
+        # Calculer le nombre de tours que la roue doit effectuer
+        num_tours = dist / (2 * math.pi * r)
+
+        # Calculer le temps nécessaire pour tourner
+        # Distance parcourue par la roue divisée par sa vitesse angulaire
+        temps_rotation =  abs(num_tours / (omega_roue / (2 * math.pi)))
+        
+        if n > 0:
+            self.spin_wheels(-omega_roue, omega_roue)
+        else:
+            self.spin_wheels(omega_roue, -omega_roue)
+        
+        return temps_rotation
+
+    def move_forward_distance_go_to(self, distance, angular_speed=3.0):
+        """
+        Go foward to a choosen distance
+        Arg : 
+        - distance (m) : a choosen distance
+        - angular_speed (rad/s) : default 3.0, speed
+        
+        Return : 
+        - time_to_travel (s) : time to do the correct distance
+        """
+        # Compute wheel circumference
+        wheel_circumference = math.pi * r
+
+        # Number of rotations needed
+        num_rotations = distance / (wheel_circumference * 2)
+
+        # Compute time
+        time_to_travel = num_rotations / (angular_speed / (2 * math.pi))
+
+        # Give speed to motors
+        self.spin_wheels(angular_speed, angular_speed)
+        
+        return time_to_travel
+    
+    def compute_position_orientation(self, vd, vg, x_n_1, y_n_1, theta_n_1, t_n_1):
+        print("v_droit_motor = ", vd, " v_gauche_motor = ", vg)
+        
+        x_dot_real, theta_dot_real = tools.direct_kinematics(vg, - vd) # real droit - car dans l'autre sens
+        print("x_dot_real = ", x_dot_real, " theta_dot_real = ", theta_dot_real)
+        
+        t_n = time.time()
+        x_n, y_n, theta_n = tools.tick_odom(x_n_1, y_n_1, theta_n_1, t_n_1, x_dot_real, theta_dot_real, t_n) # real 
+        print(f"x = {x_n}, y = {y_n}, theta = {theta_n}")
+      
+        return x_n, y_n, theta_n, t_n
